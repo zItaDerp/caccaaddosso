@@ -6,14 +6,14 @@ const io = require('socket.io')(http);
 // 1. IL CATALOGO DELLE CARTE
 const catalogoCarte = [
     { id: "jack_fanf", nome: "JackFanf ¡67!", descrizione: "JackFanf ti ha colpito a suon di 67! Fai pescare due carte a chi vuoi tu!", immagine: "/images/jack-fanf.png", quantita: 8, tipoBersaglio: 'scelta' },
-    { id: "mike_negro", nome: "Mike Negro", descrizione: "Mike negro e' sotto i portici.Ferma quello dopo per un turno e fagli sganciare qualche spicciolo!", immagine: "/images/mike-negro.png", quantita: 6, tipoBersaglio: 'prossimo' },
+    { id: "mike", nome: "Mike", descrizione: "Mike e' sotto i portici.Ferma quello dopo per un turno e fagli sganciare qualche spicciolo!", immagine: "/images/mike.png", quantita: 6, tipoBersaglio: 'prossimo' },
     { id: "cacca_addosso", nome: "Cacca Addosso (OPSS)", descrizione: "Niente di che, fatto solo cacca addosso", immagine: "/images/cacca-addosso.png", quantita: 20, tipoBersaglio: 'nessuno' },
     { id: "auguri_befluxz", nome: "Tanti auguri Befluxz", descrizione: "Facciamo tutti gli auguri a Befluxz. Si cambia giro!", immagine: "/images/auguri-befluxz.jpg", quantita: 6, tipoBersaglio: 'nessuno' },
     { id: "ruba_carta", nome: "I piedi della regina", descrizione: "Che piedi stupendi! Ruba una carta a chi vuoi tu!", immagine: "/images/piedi-regina.png", quantita: 4, tipoBersaglio: 'scelta' },
     { id: "tutti_pescano", nome: "Pavesino alla crema", descrizione: "Tu sei il mio pavesino UwU. Tutti gli altri pescano 1 carta!", immagine: "/images/pavesino-crema.png", quantita: 3, tipoBersaglio: 'nessuno' },
     { id: "sbircia", nome: "The Rock", descrizione: "The Rock ti osserva! Sbircia le prime 3 carte del mazzo!", immagine: "/images/therock-meme.png", quantita: 4, tipoBersaglio: 'nessuno' },
     { id: "mescola_mazzo", nome: "Monika", descrizione: "Monika e' tornata! Mescola tutto il mazzo!", immagine: "/images/monika.png", quantita: 3, tipoBersaglio: 'nessuno' },
-    { id: "comunismo", nome: "Braccio alzato!", descrizione: "Viva il comunismo! Tutte le mani vengono rimescolate!", immagine: "/images/comunismo.png", quantita: 2, tipoBersaglio: 'nessuno' },
+    { id: "braccio", nome: "Braccio alzato!", descrizione: "Tu tu tu tu! Tutte le mani vengono rimescolate!", immagine: "/images/braccio.png", quantita: 2, tipoBersaglio: 'nessuno' },
     { id: "scudo", nome: "Il FioreScudo", descrizione: "Il fiore preferito di Fonti, ti protegge da tutto!", immagine: "/images/fiorescudo.png", quantita: 5, tipoBersaglio: 'nessuno' }
 ];
 
@@ -209,7 +209,7 @@ io.on('connection', (socket) => {
                 }
             }
 
-            if (cartaDaGiocare.id === 'mike_negro') {
+            if (cartaDaGiocare.id === 'mike') {
                 let numGiocatori = partita.ordineGiocatori.length;
                 let indiceVittima = (partita.indiceTurno + partita.direzione + numGiocatori) % numGiocatori;
                 let idVittima = partita.ordineGiocatori[indiceVittima];
@@ -246,7 +246,7 @@ io.on('connection', (socket) => {
                         }
                     }
                     break;
-                case "mike_negro": 
+                case "mike": 
                     let indiceVittima = (partita.indiceTurno + partita.direzione + numGiocatori) % numGiocatori;
                     let idVittima = partita.ordineGiocatori[indiceVittima];
                     let giocatoreVittima = partita.giocatori[idVittima];
@@ -306,13 +306,13 @@ io.on('connection', (socket) => {
                     io.to(codiceLobby).emit('animazione_schermo', { testo: "MAZZO MESCOLATO!", icona: "🌪️", colore: "#FF1493" });
                     io.to(codiceLobby).emit('animazione_mescola_mazzo');
                     break;
-                case "comunismo":
-                    io.to(codiceLobby).emit('animazione_schermo', { testo: "COMUNISMO!", icona: "☭", colore: "#ff0000" });
+                case "braccio":
+                    io.to(codiceLobby).emit('animazione_schermo', { testo: "AIAIAI!", icona: "X", colore: "#ff0000" });
                     io.to(codiceLobby).emit('comunismo_scatenato');
                     let poolCarte = [], partecipanti = [];
                     partita.ordineGiocatori.forEach(id => {
                         if (partita.giocatori[id].scudo) {
-                            io.to(codiceLobby).emit('nuovo_log', `🛡️ ${partita.giocatori[id].nickname} sfugge al comunismo!`);
+                            io.to(codiceLobby).emit('nuovo_log', `🛡️ ${partita.giocatori[id].nickname} sfugge!`);
                         } else {
                             poolCarte.push(...partita.giocatori[id].mano);
                             partita.giocatori[id].mano = []; 

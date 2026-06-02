@@ -581,12 +581,14 @@
         window.addEventListener('DOMContentLoaded', () => {
             const savedLobby = sessionStorage.getItem('miaLobby');
             const savedNick = sessionStorage.getItem('mioNickname');
-    
+            const savedAvatar = sessionStorage.getItem('mioAvatar') || "👤"; // Aggiunto questo
+
             if (savedLobby && savedNick) {
                 console.log("Trovata sessione precedente, provo a rientrare...");
                 document.getElementById('nickname').value = savedNick;
                 setTimeout(() => {
-                    socket.emit('entra_lobby', { codice: savedLobby, nickname: savedNick });
+                    // Ora passa anche l'avatar
+                    socket.emit('entra_lobby', { codice: savedLobby, nickname: savedNick, avatar: savedAvatar });
                 }, 500);
             }
         });
@@ -863,29 +865,6 @@
         
                 // 3. Inviamo la giocata al server
                 socket.emit('gioca_carta', { uid: uidCarta, bersaglio: null });
-            }
-        }
-
-        // NUOVA FUNZIONE: Scatta quando clicchi sull'avatar di un nemico
-        function cliccaAvversario(idAvversario) {
-            if (cartaInSospeso) {
-                // FASE 2: Spara la carta al bersaglio selezionato
-                
-                // 1. Recuperiamo l'elemento HTML della carta che avevamo messo in sospeso
-                const elementoCarta = document.getElementById(cartaInSospeso);
-                
-                // 2. Facciamo partire l'animazione
-                if (elementoCarta) {
-                    animaCartaVersoScarti(elementoCarta);
-                }
-                
-                // 3. Inviamo la giocata al server
-                socket.emit('gioca_carta', { uid: cartaInSospeso, bersaglio: idAvversario });
-                
-                // Resettiamo la grafica
-                cartaInSospeso = null;
-                document.getElementById('players-circle').style.filter = "none";
-                document.getElementById('turn-indicator').innerText = "Carta giocata...";
             }
         }
 
