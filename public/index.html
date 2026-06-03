@@ -484,6 +484,66 @@
             position: fixed; width: 30px; height: 30px; background: white; border-radius: 50%;
             border: 2px solid #333; z-index: 10000; pointer-events: none; opacity: 0;
         }
+
+        /* --- OTTIMIZZAZIONI PER MOBILE (Schermi sotto i 768px) --- */
+        @media (max-width: 768px) {
+            /* Risolve il bug del 100vh su mobile usando la dynamic viewport */
+            body, #menu-screen, #game-screen {
+                height: 100dvh;
+            }
+
+            /* Rimpicciolisce il titolo del menu */
+            h1 {
+                font-size: 1.8rem;
+            }       
+
+            /* Adatta il tavolo alla verticalità dello smartphone */
+            .poker-table {
+                width: 95%;
+                height: 45%;
+                border: 15px solid #1c110a;
+                border-radius: 50px;
+            }
+            .poker-table::before {
+                top: 15px; bottom: 15px; left: 15px; right: 15px;
+                border-radius: 40px;
+            }
+
+            /* Rimpicciolisce la cronologia eventi per non coprire il tavolo */
+            #game-log {
+                width: 140px;
+                height: 110px;
+                bottom: auto;
+                top: 20px;
+                right: 20px;
+                left: auto;
+                font-size: 0.6rem;
+            }
+
+            /* Ridimensiona le carte in mano per farle stare nello schermo */
+            .card {
+                width: 85px;
+                height: 130px;
+                margin: 0 -8px;
+            }
+            .card-title { font-size: 0.65rem; }
+            .card-desc { font-size: 0.5rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+            /* Permette l'espansione verticale senza tagliare la carta quando viene selezionata */
+            .player-hand {
+                height: 180px;
+                overflow-y: visible; 
+                align-items: flex-end;
+            }
+
+            /* Nuova classe per la carta selezionata su mobile */
+            .card.selected {
+                transform: translateY(-35px) scale(1.15);
+                z-index: 100;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+                border-color: #e94560;
+            }
+        }
     </style>
 </head>
 <body>
@@ -847,18 +907,42 @@
         let arrayBersagli = [];
         let modalitaAzione = null; 
 
+        let cartaSelezionataMobile = null;
+
         function giocaCarta(uidCarta, tipoBersaglio) {
+            // Rileva se l'utente è su un dispositivo touch/mobile
+            const isMobile = window.innerWidth <= 768;
+
+            if (isMobile) {
+                const elementoCarta = document.getElementById(uidCarta);
+        
+                // Se la carta non è ancora quella selezionata, la ingrandiamo soltanto
+                if (cartaSelezionataMobile !== uidCarta) {
+                    // Rimuove la selezione da eventuali altre carte
+                    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+            
+                    // Seleziona la carta attuale
+                    elementoCarta.classList.add('selected');
+                    cartaSelezionataMobile = uidCarta;
+                 return; // Interrompe l'esecuzione, non gioca la carta!
+                }
+            }
+
+            // Se l'utente clicca una seconda volta (o è su PC), esegue la giocata normale
+            cartaSelezionataMobile = null;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+
             arrayBersagli = [];
             modalitaAzione = tipoBersaglio;
 
             if (tipoBersaglio === 'scelta' || tipoBersaglio === 'scelta_doppia' || tipoBersaglio === 'scelta_opzione') {
                 cartaInSospeso = uidCarta;
                 gestisciEffettoBersagli(true); 
-        
+
                 const turnIndicator = document.getElementById('turn-indicator');
                 if (tipoBersaglio === 'scelta_doppia') turnIndicator.innerText = "🎯 SELEZIONA IL 1° BERSAGLIO!";
                 else turnIndicator.innerText = "🎯 SELEZIONA LA VITTIMA!";
-                
+        
                 turnIndicator.style.color = "#ffeb3b";
                 document.getElementById('players-circle').style.filter = "drop-shadow(0 0 10px #ffeb3b)";
             } else {
@@ -867,10 +951,16 @@
                 document.getElementById('players-circle').style.filter = "none";
                 const elementoCarta = document.getElementById(uidCarta);
                 if (elementoCarta) animaCartaVersoScarti(elementoCarta);
-                
+        
                 socket.emit('gioca_carta', { uid: uidCarta, bersagli: [] });
             }
         }
+
+        // Deseleziona la carta se si tocca il tavolo verde
+        document.querySelector('.poker-table').addEventListener('click', () => {
+            cartaSelezionataMobile = null;
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+        });
 
         socket.on('carta_scartata', (carta) => {
             const pilaScarti = document.getElementById('pila-scarti');
