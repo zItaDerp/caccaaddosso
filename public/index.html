@@ -474,6 +474,16 @@
             background-color: rgba(255, 0, 0, 0.2) !important;
             transform: scale(1.1);
         }
+
+        .stecca-biliardo {
+            position: fixed; width: 250px; height: 10px; background: #8b4513; border-radius: 5px;
+            z-index: 10000; pointer-events: none; opacity: 0;
+            transform-origin: right center;
+        }
+        .palla-biliardo {
+            position: fixed; width: 30px; height: 30px; background: white; border-radius: 50%;
+            border: 2px solid #333; z-index: 10000; pointer-events: none; opacity: 0;
+        }
     </style>
 </head>
 <body>
@@ -834,37 +844,31 @@
             });
         }
 
+        let arrayBersagli = [];
+        let modalitaAzione = null; 
+
         function giocaCarta(uidCarta, tipoBersaglio) {
-            if (tipoBersaglio === 'scelta') {
-                // FASE 1: Mettiamo la carta "in canna" e aspettiamo il bersaglio
+            arrayBersagli = [];
+            modalitaAzione = tipoBersaglio;
+
+            if (tipoBersaglio === 'scelta' || tipoBersaglio === 'scelta_doppia' || tipoBersaglio === 'scelta_opzione') {
                 cartaInSospeso = uidCarta;
-                gestisciEffettoBersagli(true); // Accende i mirini
+                gestisciEffettoBersagli(true); 
         
                 const turnIndicator = document.getElementById('turn-indicator');
-                turnIndicator.innerText = "🎯 SELEZIONA UN BERSAGLIO!";
+                if (tipoBersaglio === 'scelta_doppia') turnIndicator.innerText = "🎯 SELEZIONA IL 1° BERSAGLIO!";
+                else turnIndicator.innerText = "🎯 SELEZIONA LA VITTIMA!";
+                
                 turnIndicator.style.color = "#ffeb3b";
-        
-                // Evidenziamo gli avversari per far capire che sono cliccabili
                 document.getElementById('players-circle').style.filter = "drop-shadow(0 0 10px #ffeb3b)";
-        
             } else {
-                // Le carte normali si giocano subito
-        
-                // 💥 SE AVEVI INIZIATO A MIRARE MA HAI CAMBIATO CARTA, SPEGNI TUTTO!
                 cartaInSospeso = null;
                 gestisciEffettoBersagli(false); 
                 document.getElementById('players-circle').style.filter = "none";
-
-                // 1. Recuperiamo l'elemento HTML della carta tramite il suo ID
                 const elementoCarta = document.getElementById(uidCarta);
-        
-                // 2. Facciamo partire l'animazione
-                if (elementoCarta) {
-                    animaCartaVersoScarti(elementoCarta);
-                }
-        
-                // 3. Inviamo la giocata al server
-                socket.emit('gioca_carta', { uid: uidCarta, bersaglio: null });
+                if (elementoCarta) animaCartaVersoScarti(elementoCarta);
+                
+                socket.emit('gioca_carta', { uid: uidCarta, bersagli: [] });
             }
         }
 
@@ -1087,33 +1091,11 @@
             }, 600); // Deve coincidere con i 0.6s del CSS
         }
 
-        // Mostra a schermo le carte viste dal Veggente
-        socket.on('risultato_sbircia', (carte) => {
-            const overlay = document.getElementById('overlay-sbircia');
-            const contenitoreCarte = document.getElementById('carte-sbircia');
-            
-            contenitoreCarte.innerHTML = ''; // Svuota il contenitore
-            
-            // Crea le 3 carte graficamente
-            carte.forEach(c => {
-                contenitoreCarte.innerHTML += `
-                    <div style="width: 130px; height: 190px; background: #fff; border-radius: 10px; color: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);">
-                        <img src="${c.immagine}" style="max-width: 80%; max-height: 50%; object-fit: contain; margin-bottom: 10px;">
-                        <strong style="font-size: 14px; text-align: center;">${c.nome}</strong>
-                    </div>
-                `;
-            });
-            
-            // Mostra l'overlay con effetto fade
-            overlay.style.display = 'flex';
-            setTimeout(() => overlay.style.opacity = '1', 50); // Piccolo delay per far partire la transizione CSS
-
-            // Le nasconde dopo 5 secondi precisi
-            setTimeout(() => {
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.style.display = 'none', 500); // Aspetta che finisca l'animazione
-            }, 5000);
-        });
+        function inviaSceltaSbircia(index) {
+            document.getElementById('overlay-sbircia').style.opacity = '0';
+            setTimeout(() => document.getElementById('overlay-sbircia').style.display = 'none', 500);
+            socket.emit('risolvi_sbircia', index);
+        }
 
         socket.on('comunismo_scatenato', () => {
             const overlay = document.getElementById('overlay-comunismo');
@@ -1146,6 +1128,27 @@
             }, 3200);
         });
 
+        // Mostra a schermo le carte viste dal Veggente
+        socket.on('scegli_sbircia', (carte) => {
+            const overlay = document.getElementById('overlay-sbircia');
+            const contenitoreCarte = document.getElementById('carte-sbircia');
+            contenitoreCarte.innerHTML = ''; 
+            
+            carte.forEach((c, index) => {
+                contenitoreCarte.innerHTML += `
+                    <div onclick="inviaSceltaSbircia(${index})" style="width: 130px; height: 190px; background: #fff; border-radius: 10px; color: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; cursor: pointer; transition: transform 0.2s;">
+                        <img src="${c.immagine}" style="max-width: 80%; max-height: 50%; object-fit: contain; margin-bottom: 10px;">
+                        <strong style="font-size: 14px; text-align: center;">${c.nome}</strong>
+                    </div>
+                `;
+            });
+            // Tasto per non pescare niente
+            contenitoreCarte.innerHTML += `<button class="btn" style="align-self: center;" onclick="inviaSceltaSbircia(-1)">Non pescare nulla</button>`;
+            
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.style.opacity = '1', 50); 
+        });
+
         // In ascolto del segnale per far vibrare il mazzo
         socket.on('animazione_mescola_mazzo', () => {
             const mazzo = document.getElementById('pila-mazzo');
@@ -1155,6 +1158,47 @@
             setTimeout(() => {
                 mazzo.classList.remove('animazione-vibra');
             }, 400);
+        });
+
+        socket.on('animazione_ninni', (idBersaglio) => {
+            const palla = document.createElement('div');
+            palla.className = 'palla-biliardo';
+            const stecca = document.createElement('div');
+            stecca.className = 'stecca-biliardo';
+            
+            document.body.appendChild(palla);
+            document.body.appendChild(stecca);
+
+            // Posiziona al centro dello schermo
+            const startX = window.innerWidth / 2;
+            const startY = window.innerHeight / 2;
+            
+            palla.style.left = startX + 'px'; palla.style.top = startY + 'px';
+            stecca.style.left = (startX - 260) + 'px'; stecca.style.top = (startY + 10) + 'px';
+            
+            palla.style.opacity = '1'; stecca.style.opacity = '1';
+
+            // Animazione colpo (rotazione e spinta)
+            stecca.style.transition = 'transform 1.2s cubic-bezier(0.25, 1, 0.5, 1)';
+            setTimeout(() => { 
+                // La stecca fa due giri completi (720deg) prima di colpire
+                stecca.style.transform = 'rotate(720deg) translateX(50px)'; 
+            }, 100);
+        
+            // Animazione palla verso il bersaglio (ritardata per aspettare la rotazione)
+            setTimeout(() => {
+                stecca.style.opacity = '0';
+                palla.style.transition = 'all 1.5s cubic-bezier(0.25, 1, 0.5, 1)'; // Palla più lenta
+            
+                let targetEl = (idBersaglio === socket.id) ? document.getElementById('my-profile') : document.getElementById(`avatar-${idBersaglio}`);
+                if(targetEl) {
+                    const rectTarget = targetEl.getBoundingClientRect();
+                    palla.style.left = rectTarget.left + 'px';
+                    palla.style.top = rectTarget.top + 'px';
+                }
+            
+                setTimeout(() => { palla.remove(); stecca.remove(); }, 1500);
+            }, 1300); // Aspetta 1.3s prima che la palla parta
         });
 
         // 1. Questa funzione accende o spegne l'effetto grafico su tutti gli avversari
@@ -1171,28 +1215,41 @@
 
         // NUOVA FUNZIONE: Scatta quando clicchi sull'avatar di un nemico
         function cliccaAvversario(idAvversario) {
-            if (cartaInSospeso) {
-                // FASE 2: Spara la carta al bersaglio selezionato
-        
-                // 1. Recuperiamo l'elemento HTML della carta che avevamo messo in sospeso
-                const elementoCarta = document.getElementById(cartaInSospeso);
-        
-                // 2. Facciamo partire l'animazione
-                if (elementoCarta) {
-                    animaCartaVersoScarti(elementoCarta);
-                }
-        
-                // 3. Inviamo la giocata al server (usando uid, come vuole il tuo server)
-                socket.emit('gioca_carta', { uid: cartaInSospeso, bersaglio: idAvversario });
-        
-                // Resettiamo la grafica
-                cartaInSospeso = null;
-                document.getElementById('players-circle').style.filter = "none";
-                document.getElementById('turn-indicator').innerText = "Carta giocata...";
+            if (!cartaInSospeso) return;
 
-                // 💥 SPEGNIAMO L'EFFETTO MIRINO QUI!
-                gestisciEffettoBersagli(false);
+            arrayBersagli.push(idAvversario);
+
+            if (modalitaAzione === 'scelta_doppia' && arrayBersagli.length === 1) {
+                document.getElementById('turn-indicator').innerText = "🎯 ORA SELEZIONA IL 2° BERSAGLIO!";
+                return; // Aspetta il secondo click
             }
+
+            if (modalitaAzione === 'scelta_opzione') {
+                // ROULETTE RUSSA: Mostra il menu di scelta carte tramite prompt per semplicità
+                gestisciEffettoBersagli(false);
+                let opzioni = ["cacca_addosso", "scudo", "jack_fanf"];
+                let scelta = prompt(`Quale carta deve pescare la vittima?\nScrivi un numero:\n1. Cacca Addosso\n2. Scudo\n3. JackFanf`);
+                let idScelto = opzioni[0];
+                if(scelta == "2") idScelto = opzioni[1];
+                if(scelta == "3") idScelto = opzioni[2];
+                
+                concludiAzione(cartaInSospeso, arrayBersagli, idScelto);
+                return;
+            }
+
+            concludiAzione(cartaInSospeso, arrayBersagli, null);
+        }
+
+        function concludiAzione(uid, bersagli, opzione) {
+            const elementoCarta = document.getElementById(uid);
+            if (elementoCarta) animaCartaVersoScarti(elementoCarta);
+    
+            socket.emit('gioca_carta', { uid: uid, bersagli: bersagli, opzioneExtra: opzione });
+    
+            cartaInSospeso = null;
+            document.getElementById('players-circle').style.filter = "none";
+            document.getElementById('turn-indicator').innerText = "Carta giocata...";
+            gestisciEffettoBersagli(false);
         }
     </script>
 </body>

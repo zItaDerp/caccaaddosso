@@ -5,16 +5,19 @@ const io = require('socket.io')(http);
 
 // 1. IL CATALOGO DELLE CARTE
 const catalogoCarte = [
-    { id: "jack_fanf", nome: "JackFanf ¡67!", descrizione: "JackFanf ti ha colpito a suon di 67! Fai pescare due carte a chi vuoi tu!", immagine: "/images/jack-fanf.png", quantita: 8, tipoBersaglio: 'scelta' },
-    { id: "mike", nome: "Mike", descrizione: "Mike e' sotto i portici.Ferma quello dopo per un turno e fagli sganciare qualche spicciolo!", immagine: "/images/mike.png", quantita: 6, tipoBersaglio: 'prossimo' },
-    { id: "cacca_addosso", nome: "Cacca Addosso (OPSS)", descrizione: "Niente di che, fatto solo cacca addosso", immagine: "/images/cacca-addosso.png", quantita: 20, tipoBersaglio: 'nessuno' },
-    { id: "auguri_befluxz", nome: "Tanti auguri Befluxz", descrizione: "Facciamo tutti gli auguri a Befluxz. Si cambia giro!", immagine: "/images/auguri-befluxz.jpg", quantita: 6, tipoBersaglio: 'nessuno' },
+    { id: "jack_fanf", nome: "JackFanf ¡67!", descrizione: "JackFanf ti ha colpito a suon di 67! Fai pescare due carte a chi vuoi tu!", immagine: "/images/jack-fanf.png", quantita: 6, tipoBersaglio: 'scelta' },
+    { id: "mike", nome: "Mike", descrizione: "Mike e' sotto i portici.Ferma quello dopo per un turno e fagli sganciare qualche spicciolo!", immagine: "/images/mike.png", quantita: 5, tipoBersaglio: 'prossimo' },
+    { id: "cacca_addosso", nome: "Cacca Addosso (OPSS)", descrizione: "Niente di che, fatto solo cacca addosso", immagine: "/images/cacca-addosso.png", quantita: 24, tipoBersaglio: 'nessuno' },
+    { id: "auguri_befluxz", nome: "Tanti auguri Befluxz", descrizione: "Facciamo tutti gli auguri a Befluxz. Si cambia giro!", immagine: "/images/auguri-befluxz.jpg", quantita: 5, tipoBersaglio: 'nessuno' },
     { id: "ruba_carta", nome: "I piedi della regina", descrizione: "Che piedi stupendi! Ruba una carta a chi vuoi tu!", immagine: "/images/piedi-regina.png", quantita: 4, tipoBersaglio: 'scelta' },
-    { id: "tutti_pescano", nome: "Pavesino alla crema", descrizione: "Tu sei il mio pavesino UwU. Tutti gli altri pescano 1 carta!", immagine: "/images/pavesino-crema.png", quantita: 3, tipoBersaglio: 'nessuno' },
+    { id: "tutti_pescano", nome: "Pavesino alla crema", descrizione: "Tu sei il mio pavesino UwU. Tutti gli altri pescano 1 carta!", immagine: "/images/pavesino-crema.png", quantita: 4, tipoBersaglio: 'nessuno' },
     { id: "sbircia", nome: "The Rock", descrizione: "The Rock ti osserva! Sbircia le prime 3 carte del mazzo!", immagine: "/images/therock-meme.png", quantita: 4, tipoBersaglio: 'nessuno' },
-    { id: "mescola_mazzo", nome: "Monika", descrizione: "Monika e' tornata! Mescola tutto il mazzo!", immagine: "/images/monika.png", quantita: 3, tipoBersaglio: 'nessuno' },
-    { id: "braccio", nome: "Braccio alzato!", descrizione: "Tu tu tu tu! Tutte le mani vengono rimescolate!", immagine: "/images/braccio.png", quantita: 2, tipoBersaglio: 'nessuno' },
-    { id: "scudo", nome: "Il FioreScudo", descrizione: "Il fiore preferito di Fonti, ti protegge da tutto!", immagine: "/images/fiorescudo.png", quantita: 5, tipoBersaglio: 'nessuno' }
+    { id: "mescola_mazzo", nome: "Monika", descrizione: "Monika e' tornata! Mescola tutto il mazzo!", immagine: "/images/monika.png", quantita: 4, tipoBersaglio: 'nessuno' },
+    { id: "braccio", nome: "Braccio alzato!", descrizione: "Tu tu tu tu! Tutte le mani vengono rimescolate!", immagine: "/images/braccio.png", quantita: 3, tipoBersaglio: 'nessuno' },
+    { id: "scudo", nome: "Il FioreScudo", descrizione: "Il fiore preferito di Fonti, ti protegge da tutto!", immagine: "/images/fiorescudo.png", quantita: 8, tipoBersaglio: 'nessuno' },
+    { id: "ninni", nome: "Ninni", descrizione: "Piano -1 da Ninni! Un giocatore a caso si becca una carta!", immagine: "/images/ninni.png", quantita: 4, tipoBersaglio: 'nessuno' },
+    { id: "sessantasette", nome: "67", descrizione: "67! Scegli 2 giocatori: pescheranno fino ad avere uno 6 e l'altro 7 carte!", immagine: "/images/67.png", quantita: 3, tipoBersaglio: 'scelta_doppia' },
+    { id: "roulette_russa", nome: "Roulette Russa", descrizione: "Carica la pistola! Scegli una vittima e una carta: pescherà finché non la trova!", immagine: "/images/rouletterussa.png", quantita: 2, tipoBersaglio: 'scelta_opzione' }
 ];
 
 // 2. FUNZIONE PER CREARE E MESCOLARE IL MAZZO
@@ -30,6 +33,35 @@ function generaMazzo() {
         [mazzo[i], mazzo[j]] = [mazzo[j], mazzo[i]]; 
     }
     return mazzo;
+}
+
+// FUNZIONE PER PESCARE IN SICUREZZA GESTENDO IL RICICLO DEGLI SCARTI
+function pescaCarta(partita, codiceLobby) {
+    if (partita.mazzo.length === 0) {
+        // Se ci sono carte negli scarti, le ricicliamo stile UNO
+        if (partita.scarti.length > 0) {
+            // Copiamo tutti gli scarti nel mazzo e svuotiamo la pila degli scarti
+            partita.mazzo = [...partita.scarti];
+            partita.scarti = [];
+            
+            // Mescoliamo il nuovo mazzo ottenuto dagli scarti (Fisher-Yates)
+            for (let i = partita.mazzo.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [partita.mazzo[i], partita.mazzo[j]] = [partita.mazzo[j], partita.mazzo[i]];
+            }
+            
+            // Inviamo un log e l'animazione di mazzo rimescolato a tutti
+            if (codiceLobby) {
+                io.to(codiceLobby).emit('nuovo_log', '🔄 Il mazzo era finito! Gli scarti sono stati rimescolati nel mazzo.');
+                io.to(codiceLobby).emit('animazione_mescola_mazzo');
+            }
+        } else {
+            // Caso estremo: non ci sono carte né nel mazzo né negli scarti (tutte in mano ai giocatori)
+            return null;
+        }
+    }
+    // Ritorna la prima carta del mazzo
+    return partita.mazzo.shift();
 }
 
 app.use(express.static('public'));
@@ -183,7 +215,9 @@ io.on('connection', (socket) => {
 
     socket.on('gioca_carta', (datiPayload) => {
         const uidCarta = datiPayload.uid;
-        const idBersaglio = datiPayload.bersaglio;
+    
+        // Corretto: prendiamo il primo elemento dell'array "bersagli" inviato dal client
+        const idBersaglio = datiPayload.bersagli ? datiPayload.bersagli[0] : null;
         let codiceLobby = Object.keys(partite).find(c => partite[c].giocatori[socket.id]);
 
         if (!codiceLobby) return;
@@ -235,14 +269,20 @@ io.on('connection', (socket) => {
                         if (partita.giocatori[idBersaglio].scudo) {
                             io.to(codiceLobby).emit('nuovo_log', `🛡️ ${partita.giocatori[idBersaglio].nickname} ha parato i colpi di JackFanf con lo Scudo!`);
                         } else {
-                            let cartePescate = partita.mazzo.splice(0, 2);
-                            partita.giocatori[idBersaglio].mano.push(...cartePescate);
-                            io.to(codiceLobby).emit('animazione_pesca', { idGiocatore: idBersaglio, quantita: 2 });
-                            io.to(codiceLobby).emit('animazione_schermo', { testo: "+2 CARTE!", icona: "🃏", colore: "#ffaa00" });
-                            setTimeout(() => {
-                                io.to(idBersaglio).emit('aggiorna_mano', partita.giocatori[idBersaglio].mano);
-                                io.to(codiceLobby).emit('aggiorna_avversari', partita.giocatori);
-                            }, 800);
+                            let cartePescate = [];
+                            for (let k = 0; k < 2; k++) {
+                                let c = pescaCarta(partita, codiceLobby);
+                                if (c) cartePescate.push(c);
+                            }
+                            if (cartePescate.length > 0) {
+                                partita.giocatori[idBersaglio].mano.push(...cartePescate);
+                                io.to(codiceLobby).emit('animazione_pesca', { idGiocatore: idBersaglio, quantita: cartePescate.length });
+                                io.to(codiceLobby).emit('animazione_schermo', { testo: "+2 CARTE!", icona: "🃏", colore: "#ffaa00" });
+                                setTimeout(() => {
+                                    io.to(idBersaglio).emit('aggiorna_mano', partita.giocatori[idBersaglio].mano);
+                                    io.to(codiceLobby).emit('aggiorna_avversari', partita.giocatori);
+                                }, 800);
+                            }
                         }
                     }
                     break;
@@ -281,21 +321,22 @@ io.on('connection', (socket) => {
                     }
                     break;
                 case "tutti_pescano":
-                    io.to(codiceLobby).emit('animazione_schermo', { testo: "TUTTI PESCANO!", icona: "🌧️", colore: "#8A2BE2" });
-                    partita.ordineGiocatori.forEach(id => {
-                        if (id !== socket.id && partita.mazzo.length > 0) {
-                            if (partita.giocatori[id].scudo) {
-                                io.to(codiceLobby).emit('nuovo_log', `🛡️ ${partita.giocatori[id].nickname} si ripara con lo scudo!`);
-                            } else {
-                                partita.giocatori[id].mano.push(partita.mazzo.shift());
-                                io.to(id).emit('aggiorna_mano', partita.giocatori[id].mano);
-                            }
+                    io.to(codiceLobby).emit('nuovo_log', `🃏 Un Pavesino alla crema per tutti! Tutti pescano 1 carta.`);
+
+                    Object.keys(partita.giocatori).forEach(idGioc => { // <-- Corretto con =>
+                        let c = pescaCarta(partita, codiceLobby); 
+                        if (c) {
+                            partita.giocatori[idGioc].mano.push(c);
+                            io.to(idGioc).emit('aggiorna_mano', partita.giocatori[idGioc].mano);
                         }
                     });
+                    io.to(codiceLobby).emit('aggiorna_avversari', partita.giocatori);
                     break;
                 case "sbircia":
-                    socket.emit('risultato_sbircia', partita.mazzo.slice(0, 3));
-                    break;
+                    socket.emit('scegli_sbircia', partita.mazzo.slice(0, 3));
+                    // FERMIAMO IL TURNO. Aspettiamo la risposta del client.
+                    partita.sospesaPerSbircia = true;
+                    return;
                 case "mescola_mazzo":
                     if (partita.mazzo.length > 1) {
                         for (let i = partita.mazzo.length - 1; i > 0; i--) {
@@ -332,18 +373,115 @@ io.on('connection', (socket) => {
                         partecipanti.forEach(id => io.to(id).emit('aggiorna_mano', partita.giocatori[id].mano));
                     }
                     break;
+                case "ninni":
+                    let possibiliVittime = partita.ordineGiocatori.filter(id => id !== socket.id);
+                    if (possibiliVittime.length > 0) {
+                        let idSfortunato = possibiliVittime[Math.floor(Math.random() * possibiliVittime.length)];
+                        let vittima = partita.giocatori[idSfortunato];
+        
+                        if (vittima.scudo) {
+                            io.to(codiceLobby).emit('nuovo_log', `🛡️ La stecca rimbalza sullo scudo di ${vittima.nickname}!`);
+                        } else {
+                            io.to(codiceLobby).emit('animazione_ninni', idSfortunato); 
+            
+                            setTimeout(() => {
+                                let c = pescaCarta(partita, codiceLobby);
+                                if (c) {
+                                    vittima.mano.push(c);
+                                    // Aggiorna la schermata personale della vittima
+                                    io.to(idSfortunato).emit('aggiorna_mano', vittima.mano);
+                    
+                                    // AGGIUNTA FONDAMENTALE: Aggiorna i contatori degli avversari per tutti
+                                    io.to(codiceLobby).emit('aggiorna_avversari', partita.giocatori);
+                    
+                                    io.to(codiceLobby).emit('nuovo_log', `🎱 La palla ha colpito ${vittima.nickname}, che pesca 1 carta!`);
+                                }
+                            }, 3000); 
+                        }
+                    }
+                    break;
+                case "sessantasette":
+                    if (datiPayload.bersagli && datiPayload.bersagli.length === 2) {
+                        let target6 = Math.random() > 0.5 ? datiPayload.bersagli[0] : datiPayload.bersagli[1];
+                        let target7 = target6 === datiPayload.bersagli[0] ? datiPayload.bersagli[1] : datiPayload.bersagli[0];
+
+                        [ {id: target6, obj: 6}, {id: target7, obj: 7} ].forEach(t => {
+                            let p = partita.giocatori[t.id];
+                            if (p && !p.scudo) {
+                                let pescateCount = 0;
+                                // Sostituito il controllo mazzo con pescaCarta dentro al loop
+                                while (p.mano.length < t.obj) {
+                                    let c = pescaCarta(partita, codiceLobby);
+                                    if (!c) break; // Ferma se non ci sono più carte in gioco
+                                    p.mano.push(c);
+                                    pescateCount++;
+                                }
+                                io.to(t.id).emit('aggiorna_mano', p.mano);
+                                if(pescateCount > 0) io.to(codiceLobby).emit('animazione_pesca', { idGiocatore: t.id, quantita: pescateCount });
+                                io.to(codiceLobby).emit('nuovo_log', `🃏 ${p.nickname} è stato forzato a ${t.obj} carte!`);
+                            } else if (p && p.scudo) {
+                                io.to(codiceLobby).emit('nuovo_log', `🛡️ Lo scudo di ${p.nickname} blocca il 67!`);
+                            }
+                        });
+                    }
+                    break;
+
+                case "roulette_russa":
+                    let vittimaId = datiPayload.bersagli[0];
+                    let cartaObiettivo = datiPayload.opzioneExtra || "cacca_addosso";
+                    let vittima = partita.giocatori[vittimaId];
+
+                    if (vittima && !vittima.scudo) {
+                        let trovata = false;
+                        let contatore = 0;
+                        const MAX_PESCATE = 7; // <- LIMITE DI SICUREZZA: Evita che un giocatore peschi 30 carte distruggendo il suo gioco
+
+                        while (!trovata && contatore < MAX_PESCATE) {
+                            let pescata = pescaCarta(partita, codiceLobby);
+                            if (!pescata) {
+                                io.to(codiceLobby).emit('nuovo_log', `⚠ Mazzo e scarti completamente esauriti! La Roulette si ferma.`);
+                                break; // Ferma il ciclo se non ci sono proprio più carte in gioco
+                            }
+                            vittima.mano.push(pescata);
+                            contatore++;
+                            if (pescata.id === cartaObiettivo) trovata = true;
+                        }
+        
+                        io.to(vittimaId).emit('aggiorna_mano', vittima.mano);
+                        io.to(codiceLobby).emit('animazione_pesca', { idGiocatore: vittimaId, quantita: Math.min(contatore, 5) });
+        
+                        if (trovata) {
+                            io.to(codiceLobby).emit('nuovo_log', `🔫 ROULETTE: ${vittima.nickname} ha pescato ${contatore} carte prima di trovare [${cartaObiettivo}]!`);
+                        } else {
+                            io.to(codiceLobby).emit('nuovo_log', `🔫 ROULETTE: ${vittima.nickname} ha pescato il limite di ${contatore} carte senza trovare l'obiettivo!`);
+                        }
+                    } else if (vittima && vittima.scudo) {
+                        io.to(codiceLobby).emit('nuovo_log', `🛡️ Lo scudo salva ${vittima.nickname} dalla Roulette!`);
+                    }
+                    break;
             }
 
-            if (mioGiocatore.mano.length === 0) {
+            // --- INIZIO NUOVO CONTROLLO VITTORIA ---
+            let idVincitore = Object.keys(partita.giocatori).find(id => partita.giocatori[id].mano.length === 0);
+            
+            if (idVincitore) {
+                let giocatoreVincente = partita.giocatori[idVincitore];
                 partita.stato = 'finita'; 
                 if (partita.timeoutObj) clearTimeout(partita.timeoutObj); 
+                
                 io.to(codiceLobby).emit('carta_scartata', cartaGiocata); 
                 io.to(codiceLobby).emit('aggiorna_avversari', partita.giocatori); 
-                socket.emit('aggiorna_mano', mioGiocatore.mano); 
-                io.to(codiceLobby).emit('nuovo_log', `🏆 ${mioGiocatore.nickname} HA VINTO LA PARTITA!`);
-                io.to(codiceLobby).emit('partita_finita', { vincitore: mioGiocatore.nickname, idHost: partita.host });
+                
+                // Aggiorniamo le mani di tutti per sicurezza
+                Object.keys(partita.giocatori).forEach(id => {
+                    io.to(id).emit('aggiorna_mano', partita.giocatori[id].mano);
+                });
+                
+                io.to(codiceLobby).emit('nuovo_log', `🏆 ${giocatoreVincente.nickname} HA VINTO LA PARTITA!`);
+                io.to(codiceLobby).emit('partita_finita', { vincitore: giocatoreVincente.nickname, idHost: partita.host });
                 return; 
             }
+            // --- FINE NUOVO CONTROLLO VITTORIA ---
 
             let passiTurno = saltaProssimo ? 2 : 1;
             partita.indiceTurno = (partita.indiceTurno + (partita.direzione * passiTurno) + numGiocatori) % numGiocatori;
@@ -358,6 +496,34 @@ io.on('connection', (socket) => {
             
             avviaTimerTurno(codiceLobby); 
         }
+    });
+
+    socket.on('risolvi_sbircia', (indiceScelto) => {
+        let codiceLobby = Object.keys(partite).find(c => partite[c].giocatori[socket.id]);
+        if (!codiceLobby) return;
+        let partita = partite[codiceLobby];
+        let mioGiocatore = partita.giocatori[socket.id];
+
+        if (indiceScelto !== -1 && partita.mazzo[indiceScelto]) {
+            // Rimuove la carta dal mazzo e la mette in mano
+            let cartaPresa = partita.mazzo.splice(indiceScelto, 1)[0];
+            mioGiocatore.mano.push(cartaPresa);
+            io.to(codiceLobby).emit('nuovo_log', `👁️ ${mioGiocatore.nickname} ha tenuto una carta scovata da The Rock!`);
+        } else {
+            io.to(codiceLobby).emit('nuovo_log', `👁️ ${mioGiocatore.nickname} non ha tenuto nessuna carta.`);
+        }
+        
+        socket.emit('aggiorna_mano', mioGiocatore.mano);
+        
+        // Sblocca il gioco e passa il turno al prossimo giocatore
+        partita.sospesaPerSbircia = false;
+        let numGiocatori = partita.ordineGiocatori.length;
+        partita.indiceTurno = (partita.indiceTurno + partita.direzione + numGiocatori) % numGiocatori;
+        let idProssimoTurno = partita.ordineGiocatori[partita.indiceTurno];
+        
+        partita.giocatori[idProssimoTurno].scudo = false;
+        io.to(codiceLobby).emit('cambio_turno', { id: idProssimoTurno, nickname: partita.giocatori[idProssimoTurno].nickname });
+        avviaTimerTurno(codiceLobby);
     });
 
     socket.on('disconnect', () => gestisciUscita(socket));
